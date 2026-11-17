@@ -273,6 +273,7 @@ test.describe('Jupiter Toys Contact Form Tests', () => {
       console.log(`✓ Submitted form ${i}`);
 
       await contactPage.page.waitForLoadState('networkidle');
+      await contactPage.page.locator('.modal-backdrop').waitFor({ state: 'hidden' });
 
       // Reload page for next iteration
       if (i < 3) {

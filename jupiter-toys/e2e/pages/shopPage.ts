@@ -1,6 +1,11 @@
 import { Page } from '@playwright/test';
 import { BasePage } from './basePage';
 
+export interface ProductSummary {
+  name: string;
+  price: string;
+}
+
 export class ShopPage extends BasePage {
   constructor(page: Page) {
     super(page);
@@ -36,12 +41,11 @@ export class ShopPage extends BasePage {
   /**
    * Get product by name
    */
-  async getProductByName(productName: string): Promise<any> {
+  async getProductByName(productName: string): Promise<ProductSummary | undefined> {
     const products = await this.page.$$eval('li', elements =>
       elements.map(el => ({
-        name: el.querySelector('h4')?.textContent?.trim(),
-        price: el.querySelector('p')?.textContent?.trim(),
-        buyButton: el.querySelector('a')
+        name: el.querySelector('h4')?.textContent?.trim() || '',
+        price: el.querySelector('p')?.textContent?.trim() || '',
       }))
     );
     return products.find(p => p.name === productName);
@@ -51,18 +55,9 @@ export class ShopPage extends BasePage {
    * Click Buy button for a specific product
    */
   async buyProduct(productName: string): Promise<void> {
-    const buyButtons = await this.page.$$('a:has-text("Buy")');
-    const productElements = await this.page.$$('li');
-
-    for (let i = 0; i < productElements.length; i++) {
-      const heading = await productElements[i].querySelector('h4');
-      const headingText = await heading?.evaluate(el => el.textContent?.trim());
-
-      if (headingText === productName) {
-        await buyButtons[i].click();
-        break;
-      }
-    }
+    const product = this.page.locator('li').filter({ hasText: productName }).first();
+    await product.getByRole('heading', { name: productName }).waitFor();
+    await product.getByRole('link', { name: 'Buy' }).click();
   }
 
   /**
