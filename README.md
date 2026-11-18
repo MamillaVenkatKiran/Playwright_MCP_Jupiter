@@ -129,7 +129,7 @@ For Allure usage details, see `jupiter-toys/e2e/ALLURE_GUIDE.md`.
 
 ## CI pipeline
 
-GitHub Actions runs the primary framework on pushes and pull requests targeting `main` or `master`. The pipeline performs a reproducible dependency install, installs all Playwright browsers, type-checks the framework, runs the cross-browser suite, and uploads HTML, Allure, and failure-evidence artifacts.
+GitHub Actions runs the primary framework on pushes and pull requests targeting `main` or `master`. Separate jobs type-check the framework, audit dependencies, and run Chromium, Firefox, and WebKit tests in parallel. The dependency audit is currently advisory, so findings remain visible without blocking the pipeline. Each browser job uploads its own HTML, Allure, and failure-evidence artifacts, and a final pipeline gate verifies that every required job passed.
 
 ## Notes
 

@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    timeout-minutes: 60
+  quality:
+    name: Quality checks
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,14 +29,62 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-
     - name: Type-check framework
       run: npx tsc --noEmit
 
-    - name: Run Playwright tests
-      run: npm test
+  dependency-audit:
+    name: Dependency audit (advisory)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: jupiter-toys/e2e
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+        cache: npm
+        cache-dependency-path: jupiter-toys/e2e/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Audit dependencies
+      run: npm audit --audit-level=high
+      continue-on-error: true
+
+  test:
+    name: Test (${{ matrix.browser }})
+    needs: quality
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    defaults:
+      run:
+        working-directory: jupiter-toys/e2e
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+        cache: npm
+        cache-dependency-path: jupiter-toys/e2e/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install ${{ matrix.browser }} browser
+      run: npx playwright install --with-deps ${{ matrix.browser }}
+
+    - name: Run ${{ matrix.browser }} tests
+      run: npx playwright test --project=${{ matrix.browser }}
 
     - name: Generate Allure report
       if: ${{ always() }}
@@ -46,7 +94,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
-        name: playwright-report
+        name: playwright-report-${{ matrix.browser }}
         path: jupiter-toys/e2e/html-report/
         if-no-files-found: warn
         retention-days: 30
@@ -55,7 +103,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
-        name: allure-report
+        name: allure-report-${{ matrix.browser }}
         path: |
           jupiter-toys/e2e/allure-report/
           jupiter-toys/e2e/allure-results/
@@ -66,9 +114,27 @@ jobs:
       uses: actions/upload-artifact@v4
       if: ${{ failure() && !cancelled() }}
       with:
-        name: playwright-failure-evidence
+        name: playwright-failure-evidence-${{ matrix.browser }}
         path: |
           jupiter-toys/e2e/test-results/
           jupiter-toys/e2e/screenshots/
         if-no-files-found: warn
         retention-days: 30
+
+  pipeline-gate:
+    name: Pipeline gate
+    if: ${{ always() }}
+    needs: [quality, dependency-audit, test]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Verify required jobs passed
+      env:
+        QUALITY_RESULT: ${{ needs.quality.result }}
+        AUDIT_RESULT: ${{ needs.dependency-audit.result }}
+        TEST_RESULT: ${{ needs.test.result }}
+      run: |
+        if [[ "$QUALITY_RESULT" != "success" || "$AUDIT_RESULT" != "success" || "$TEST_RESULT" != "success" ]]; then
+          echo "One or more required jobs did not pass."
+          exit 1
+        fi
