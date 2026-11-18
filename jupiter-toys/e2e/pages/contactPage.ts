@@ -56,6 +56,11 @@ export class ContactPage extends BasePage {
     await this.clickElement(contactFormLocators.submitButton);
   }
 
+  async returnToContactForm(): Promise<void> {
+    await this.page.getByRole('link', { name: 'Back' }).click();
+    await this.page.locator(contactFormLocators.forenameField).waitFor();
+  }
+
   /**
    * Get value from a field
    */

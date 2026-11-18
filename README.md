@@ -8,7 +8,7 @@ This repository contains Playwright-based UI automation for the Jupiter Toys sam
 | --- | --- |
 | `jupiter-toys/e2e/` | Primary Jupiter Toys end-to-end framework built with Playwright, TypeScript, Page Object Model (POM), and Allure reporting |
 | `tests/` | Root-level sample Playwright tests created outside the main Jupiter Toys framework |
-| `.github/workflows/playwright.yml` | GitHub Actions workflow for the root Playwright setup |
+| `.github/workflows/playwright.yml` | GitHub Actions pipeline for the primary Jupiter Toys framework |
 
 If you want to run the Jupiter Toys automation suite, use `jupiter-toys/e2e`.
 
@@ -49,6 +49,7 @@ Playwright_MCP_Jupiter/
 |     |  '- screenshotUtil.ts
 |     |- ALLURE_GUIDE.md
 |     |- README.md
+|     |- package-lock.json
 |     |- package.json
 |     |- playwright.config.ts
 |     '- tsconfig.json
@@ -126,8 +127,12 @@ The main framework writes:
 
 For Allure usage details, see `jupiter-toys/e2e/ALLURE_GUIDE.md`.
 
+## CI pipeline
+
+GitHub Actions runs the primary framework on pushes and pull requests targeting `main` or `master`. Separate jobs type-check the framework, audit dependencies, and run Chromium, Firefox, and WebKit tests in parallel. The dependency audit is currently advisory, so findings remain visible without blocking the pipeline. Each browser job uploads its own HTML, Allure, and failure-evidence artifacts, and a final pipeline gate verifies that every required job passed.
+
 ## Notes
 
 - The nested `jupiter-toys/e2e/README.md` contains framework-specific details.
 - Some sample tests currently use illustrative credentials in code. Move sensitive or environment-specific data to configuration before using the suite in shared environments.
-- The root-level Playwright setup is separate from the main Jupiter Toys POM framework.
+- Root scripts delegate test execution to the main Jupiter Toys POM framework.

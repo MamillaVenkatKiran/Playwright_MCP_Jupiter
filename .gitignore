@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 package-lock.json
+!jupiter-toys/e2e/package-lock.json
 yarn.lock
 
 # Playwright
